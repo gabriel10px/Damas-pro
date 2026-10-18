@@ -1,0 +1,1936 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Damas Pro Online</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap');
+        
+        * {
+            font-family: 'Outfit', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        :root {
+            --bg-primary: #0b0f19;
+            --bg-secondary: #151c2c;
+            --accent-gold: #f59e0b;
+            --accent-glow: rgba(245, 158, 11, 0.35);
+            --board-dark: #8b5a2b;
+            --board-light: #e0c38c;
+            --p1-color: #ef4444;
+            --p1-border: #991b1b;
+            --p2-color: #f8fafc;
+            --p2-border: #94a3b8;
+        }
+
+        /* Glassmorphism utility */
+        .glass-panel {
+            background: rgba(21, 28, 44, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .glass-card {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(245, 158, 11, 0.4);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(245, 158, 11, 0.8);
+        }
+
+        .checkers-board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            aspect-ratio: 1 / 1;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7), 0 0 20px rgba(245, 158, 11, 0.15);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 8px solid #1e293b;
+            transition: all 0.3s ease;
+        }
+
+        .square {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s ease;
+        }
+
+        .square.dark {
+            background-color: var(--board-dark);
+        }
+
+        .square.light {
+            background-color: var(--board-light);
+        }
+
+        .square.selected {
+            box-shadow: inset 0 0 0 4px #3b82f6, 0 0 12px rgba(59, 130, 246, 0.8);
+            z-index: 10;
+        }
+
+        .square.valid-move {
+            cursor: pointer;
+        }
+
+        .square.valid-move::after {
+            content: '';
+            width: 32%;
+            height: 32%;
+            background-color: #22c55e;
+            border-radius: 50%;
+            box-shadow: 0 0 12px #22c55e, 0 0 20px rgba(34, 197, 94, 0.6);
+            animation: pulse-dot 1.2s infinite ease-in-out;
+            pointer-events: none;
+        }
+
+        @keyframes pulse-dot {
+            0% { transform: scale(0.85); opacity: 0.7; }
+            50% { transform: scale(1.15); opacity: 1; }
+            100% { transform: scale(0.85); opacity: 0.7; }
+        }
+
+        /* Checkers Piece */
+        .piece {
+            width: 82%;
+            height: 82%;
+            border-radius: 50%;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5), inset 0 3px 6px rgba(255,255,255,0.4), inset 0 -4px 6px rgba(0,0,0,0.4);
+            z-index: 5;
+        }
+
+        .piece.p1 {
+            background: radial-gradient(circle at 35% 35%, var(--p1-color), #7f1d1d);
+            border: 3px solid var(--p1-border);
+        }
+
+        .piece.p2 {
+            background: radial-gradient(circle at 35% 35%, var(--p2-color), #475569);
+            border: 3px solid var(--p2-border);
+        }
+
+        .piece:hover {
+            transform: scale(1.08);
+        }
+
+        .piece.king::before {
+            content: '';
+            position: absolute;
+            width: 55%;
+            height: 55%;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23fbbf24' stroke='%2378350f' stroke-width='1.5'%3E%3Cpath d='M2 4l3 12h14l3-12-6 7-4-5-4 5-6-7z'/%3E%3C/svg%3E");
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+        }
+
+        /* Custom Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Toast Notifications */
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .toast {
+            pointer-events: auto;
+            background: rgba(15, 23, 42, 0.95);
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 12px;
+            border-left: 4px solid var(--accent-gold);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes toastIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Push Notification Box Simulation */
+        #push-notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 200;
+            width: 90%;
+            max-width: 420px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+            border: 1px solid rgba(245, 158, 11, 0.5);
+            animation: pushBanner 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes pushBanner {
+            from { transform: translate(-50%, -100px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden select-none">
+
+    <!-- SIMULATED MOBILE PUSH NOTIFICATION SYSTEM -->
+    <div id="push-notification" class="hidden glass-panel p-4 rounded-2xl bg-slate-900/95 flex flex-col gap-2 cursor-pointer">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="p-1.5 rounded-lg bg-amber-500 text-slate-950">
+                    <i data-lucide="crown" class="w-4 h-4"></i>
+                </div>
+                <span class="text-xs font-bold text-amber-400">Damas Pro Online</span>
+                <span class="text-[10px] text-slate-400">&bull; Agora</span>
+            </div>
+            <button onclick="dismissPushNotification(event)" class="text-slate-400 hover:text-slate-100">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+        <div class="pl-1">
+            <p id="push-title" class="font-bold text-sm text-slate-100">Convite para Partida!</p>
+            <p id="push-body" class="text-xs text-slate-300">Seu amigo convidou você para jogar uma partida agora.</p>
+        </div>
+        <div class="mt-1 flex justify-end">
+            <button id="push-action-btn" class="px-4 py-1.5 bg-amber-500 text-slate-950 text-xs font-extrabold rounded-lg hover:bg-amber-400 transition-colors">
+                Entrar Direto na Partida
+            </button>
+        </div>
+    </div>
+
+    <!-- SPLASH SCREEN -->
+    <div id="splash-screen" class="fixed inset-0 z-50 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex flex-col items-center justify-center p-6 transition-opacity duration-500">
+        <div class="relative mb-8 flex items-center justify-center">
+            <div class="absolute inset-0 bg-amber-500/25 blur-3xl rounded-full scale-125"></div>
+            <div class="w-28 h-28 glass-panel rounded-3xl flex items-center justify-center border border-amber-500/40 relative shadow-2xl">
+                <i data-lucide="crown" class="w-14 h-14 text-amber-400 filter drop-shadow"></i>
+                <div class="absolute -bottom-2 -right-2 px-2.5 py-0.5 bg-gradient-to-r from-amber-500 to-amber-600 rounded-full text-slate-950 font-black text-[10px] tracking-wider shadow-lg">
+                    PRO HD
+                </div>
+            </div>
+        </div>
+        <h1 class="text-3xl font-extrabold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 mb-2">
+            DAMAS PRO ONLINE
+        </h1>
+        <p class="text-slate-400 text-xs font-semibold mb-10 tracking-widest uppercase">Modo Competitivo HD</p>
+
+        <div class="w-64 bg-slate-800/80 rounded-full h-2.5 overflow-hidden p-0.5 border border-slate-700/50 mb-3 shadow-inner">
+            <div id="splash-bar" class="bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-300 h-full rounded-full w-0 transition-all duration-300 shadow"></div>
+        </div>
+        <span id="splash-status" class="text-xs text-slate-400 font-mono">Carregando recursos...</span>
+    </div>
+
+    <!-- MAIN APP WRAPPER -->
+    <div id="app-container" class="hidden flex-1 flex flex-col min-h-screen">
+
+        <!-- HEADER / NAVIGATION -->
+        <header class="glass-panel sticky top-0 z-30 px-4 py-3 flex items-center justify-between border-b border-slate-800">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold">
+                    <i data-lucide="crown" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h2 class="font-bold text-base leading-tight tracking-wide text-slate-100">Damas Pro</h2>
+                    <span class="text-xs text-amber-400 font-medium">v2.5 APK Edition</span>
+                </div>
+            </div>
+
+            <!-- Header Actions -->
+            <div class="flex items-center gap-2">
+                <!-- Friends Toggle -->
+                <button onclick="openModal('modal-friends')" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 transition-colors relative" title="Amigos">
+                    <i data-lucide="users" class="w-5 h-5"></i>
+                    <span id="friends-badge" class="hidden absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-slate-900"></span>
+                </button>
+
+                <!-- Settings Button -->
+                <button onclick="openModal('modal-settings')" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 transition-colors" title="Configurações">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                </button>
+
+                <!-- User Profile Pill -->
+                <div onclick="openModal('modal-profile')" class="flex items-center gap-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 px-3 py-1.5 rounded-xl cursor-pointer transition-all">
+                    <img id="header-avatar" src="https://placehold.co/100x100/1e293b/f59e0b?text=U" class="w-7 h-7 rounded-lg object-cover border border-amber-500/40" alt="Avatar">
+                    <span id="header-username" class="text-xs font-semibold text-slate-200 max-w-[90px] truncate">Jogador</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- APP CONTENT BODY -->
+        <main class="flex-1 max-w-4xl w-full mx-auto p-4 flex flex-col gap-4 justify-center items-center">
+
+            <!-- BANNER DA SALA / CONVITE MULTIPLAYER -->
+            <div id="room-banner" class="hidden w-full glass-panel p-4 rounded-2xl border border-amber-500/30 flex items-center justify-between gap-3 animate-fade-in">
+                <div class="flex items-center gap-3 overflow-hidden">
+                    <div class="p-2 rounded-lg bg-amber-500/20 text-amber-400 shrink-0">
+                        <i data-lucide="share-2" class="w-5 h-5"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-xs text-slate-400">Código da Sala Online:</p>
+                        <p id="room-code-display" class="font-mono font-bold text-amber-400 text-sm tracking-wider truncate">------</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button onclick="copyRoomCode()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-lg flex items-center gap-1.5 transition-colors">
+                        <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copiar
+                    </button>
+                    <button onclick="closeRoomBanner()" class="p-1.5 text-slate-400 hover:text-slate-200 rounded-lg">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- DASHBOARD HOME MENU -->
+            <div id="view-dashboard" class="w-full flex flex-col gap-6 py-4 animate-fade-in">
+                
+                <!-- Hero Promo APK Card -->
+                <div onclick="openModal('modal-apk')" class="glass-panel p-5 rounded-3xl border border-amber-500/30 flex items-center justify-between cursor-pointer group hover:border-amber-500/60 transition-all bg-gradient-to-r from-slate-900/90 via-slate-800/80 to-amber-950/30 shadow-xl">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform">
+                            <i data-lucide="download" class="w-7 h-7"></i>
+                        </div>
+                        <div>
+                            <span class="text-[10px] uppercase tracking-widest font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">Aplicativo Oficial</span>
+                            <h3 class="font-bold text-lg text-slate-100 mt-0.5">Baixar APK Damas Pro</h3>
+                            <p class="text-xs text-slate-400">Instale no celular para jogar a 60FPS offline!</p>
+                        </div>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-6 h-6 text-slate-500 group-hover:text-amber-400 transition-colors"></i>
+                </div>
+
+                <!-- Game Mode Options -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                    <!-- Single Player VS IA -->
+                    <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex flex-col gap-3 hover:border-slate-700 transition-all">
+                        <div class="flex items-center justify-between">
+                            <div class="p-3 rounded-xl bg-blue-500/10 text-blue-400">
+                                <i data-lucide="bot" class="w-6 h-6"></i>
+                            </div>
+                            <span class="text-xs text-slate-400">Modo Offline</span>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-base text-slate-100">Contra a Inteligência Artificial</h4>
+                            <p class="text-xs text-slate-400 mt-1">Treine suas táticas contra o computador em 3 dificuldades.</p>
+                        </div>
+                        <div class="flex gap-2 mt-2">
+                            <button onclick="startAiGame('facil')" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 rounded-xl font-medium border border-slate-700 transition-colors">Fácil</button>
+                            <button onclick="startAiGame('medio')" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 rounded-xl font-medium border border-slate-700 transition-colors">Médio</button>
+                            <button onclick="startAiGame('dificil')" class="flex-1 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-xs text-amber-300 rounded-xl font-bold border border-amber-500/30 transition-colors">Difícil</button>
+                        </div>
+                    </div>
+
+                    <!-- Multiplayer Online Instantâneo -->
+                    <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex flex-col gap-3 hover:border-slate-700 transition-all">
+                        <div class="flex items-center justify-between">
+                            <div class="p-3 rounded-xl bg-emerald-500/10 text-emerald-400">
+                                <i data-lucide="swords" class="w-6 h-6"></i>
+                            </div>
+                            <span class="text-xs text-emerald-400 font-medium flex items-center gap-1">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span> Tempo Real
+                            </span>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-base text-slate-100">Multiplayer Online</h4>
+                            <p class="text-xs text-slate-400 mt-1">Crie uma sala instantânea ou junte-se a um amigo para jogar.</p>
+                        </div>
+                        <div class="flex gap-2 mt-2">
+                            <button onclick="createOnlineGame()" class="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 hover:from-amber-400 hover:to-amber-500 font-bold text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5">
+                                <i data-lucide="plus" class="w-4 h-4"></i> Criar Sala
+                            </button>
+                            <button onclick="openJoinModal()" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl border border-slate-700 transition-colors flex items-center justify-center gap-1.5">
+                                <i data-lucide="log-in" class="w-4 h-4"></i> Entrar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Pass & Play (2 Jogadores Local) -->
+                    <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex flex-col gap-3 hover:border-slate-700 transition-all md:col-span-2">
+                        <div class="flex items-center justify-between">
+                            <div class="p-3 rounded-xl bg-purple-500/10 text-purple-400">
+                                <i data-lucide="gamepad-2" class="w-6 h-6"></i>
+                            </div>
+                            <span class="text-xs text-slate-400">Mesmo Dispositivo</span>
+                        </div>
+                        <div class="flex items-center justify-between flex-wrap gap-3">
+                            <div>
+                                <h4 class="font-bold text-base text-slate-100">Modo Local (2 Jogadores)</h4>
+                                <p class="text-xs text-slate-400 mt-0.5">Jogue com um amigo do seu lado dividindo a tela do celular ou PC.</p>
+                            </div>
+                            <button onclick="startLocalGame()" class="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl transition-colors shadow-md">
+                                Iniciar Local
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- GAMEPLAY SCREEN -->
+            <div id="view-gameplay" class="hidden w-full flex flex-col gap-4 items-center animate-fade-in">
+
+                <!-- TOP PLAYER BAR -->
+                <div class="w-full max-w-lg glass-panel p-3 rounded-2xl flex items-center justify-between border border-slate-800">
+                    <div class="flex items-center gap-3">
+                        <img id="p2-avatar" src="https://placehold.co/100x100/334155/f8fafc?text=O" class="w-10 h-10 rounded-xl object-cover border border-slate-700" alt="Op">
+                        <div>
+                            <div id="p2-name" class="font-bold text-sm text-slate-200">Oponente</div>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span id="p2-captured-count" class="text-xs text-slate-400 font-mono">0 capturas</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="p2-turn-indicator" class="hidden px-3 py-1 rounded-full bg-slate-800 text-slate-400 text-xs font-bold border border-slate-700">
+                        Vez dele
+                    </div>
+                </div>
+
+                <!-- THE BOARD CONTAINER -->
+                <div class="w-full max-w-lg relative">
+                    <div id="board" class="checkers-board w-full"></div>
+                </div>
+
+                <!-- BOTTOM PLAYER BAR -->
+                <div class="w-full max-w-lg glass-panel p-3 rounded-2xl flex items-center justify-between border border-slate-800">
+                    <div class="flex items-center gap-3">
+                        <img id="p1-avatar" src="https://placehold.co/100x100/1e293b/f59e0b?text=U" class="w-10 h-10 rounded-xl object-cover border border-amber-500/40" alt="Você">
+                        <div>
+                            <div id="p1-name" class="font-bold text-sm text-slate-200">Você</div>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span id="p1-captured-count" class="text-xs text-slate-400 font-mono">0 capturas</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="p1-turn-indicator" class="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-xs font-bold border border-amber-500/30 animate-pulse">
+                        Sua Vez
+                    </div>
+                </div>
+
+                <!-- IN-GAME ACTIONS & CHAT BAR -->
+                <div class="w-full max-w-lg flex items-center justify-between gap-2">
+                    <button onclick="leaveGame()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold border border-slate-700 flex items-center gap-2 transition-colors">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i> Sair do Jogo
+                    </button>
+
+                    <button id="btn-toggle-chat" onclick="toggleMatchChat()" class="relative px-4 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-xl text-xs font-bold border border-amber-500/30 flex items-center gap-2 transition-colors">
+                        <i data-lucide="message-square" class="w-4 h-4"></i> Chat de Partida
+                        <span id="chat-unread-dot" class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full"></span>
+                    </button>
+                </div>
+
+                <!-- MATCH CHAT PANEL -->
+                <div id="match-chat-panel" class="hidden w-full max-w-lg glass-panel rounded-2xl p-4 border border-slate-800 flex-col gap-3 animate-fade-in">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <span class="text-xs font-bold text-slate-300 flex items-center gap-2">
+                            <i data-lucide="message-circle" class="w-4 h-4 text-amber-400"></i> Mensagens da Partida
+                        </span>
+                        <button onclick="toggleMatchChat()" class="text-slate-500 hover:text-slate-300">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+
+                    <!-- Chat Messages List -->
+                    <div id="match-chat-messages" class="h-40 overflow-y-auto flex flex-col gap-2 p-1 text-xs">
+                        <p class="text-slate-500 text-center italic text-[11px]">Inicie a conversa ou use mensagens rápidas!</p>
+                    </div>
+
+                    <!-- Quick Phrases -->
+                    <div class="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                        <button onclick="sendQuickPhrase('Boa jogada!')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[11px] whitespace-nowrap border border-slate-700">Boa jogada!</button>
+                        <button onclick="sendQuickPhrase('Sua vez!')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[11px] whitespace-nowrap border border-slate-700">Sua vez!</button>
+                        <button onclick="sendQuickPhrase('Boa sorte!')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[11px] whitespace-nowrap border border-slate-700">Boa sorte!</button>
+                        <button onclick="sendQuickPhrase('Revanche?')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[11px] whitespace-nowrap border border-slate-700">Revanche?</button>
+                    </div>
+
+                    <!-- Text Input -->
+                    <form onsubmit="handleSendMatchMessage(event)" class="flex gap-2">
+                        <input id="match-chat-input" type="text" placeholder="Digite uma mensagem..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
+                        <button type="submit" class="p-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl transition-colors">
+                            <i data-lucide="send" class="w-4 h-4"></i>
+                        </button>
+                    </form>
+                </div>
+
+            </div>
+
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="p-4 text-center text-xs text-slate-500 border-t border-slate-800/50">
+            Damas Pro Online &copy; 2026 &bull; Sem Emojis &bull; Full Responsive
+        </footer>
+    </div>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- 1. MODAL CONFIGURAÇÕES COMPLETAS -->
+    <div id="modal-settings" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-md rounded-3xl p-6 border border-slate-700 flex flex-col gap-5 max-h-[90vh] overflow-y-auto animate-fade-in shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5 text-amber-400"></i>
+                    <h3 class="font-bold text-lg text-slate-100">Configurações</h3>
+                </div>
+                <button onclick="closeModal('modal-settings')" class="p-1 rounded-lg text-slate-400 hover:text-slate-100">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Customize Board Theme -->
+            <div class="flex flex-col gap-2">
+                <label class="text-xs font-bold text-slate-300 uppercase tracking-wider">Estilo do Tabuleiro</label>
+                <select id="setting-board-theme" onchange="applySettings()" class="bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-xl p-3 focus:outline-none focus:border-amber-500">
+                    <option value="classic">Madeira Clássica (Ouro & Amarelo)</option>
+                    <option value="sapphire">Azul Safira (Azul & Azul Claro)</option>
+                    <option value="emerald">Verde Esmeralda (Verde & Menta)</option>
+                    <option value="cyber">Escuro Cyber (Cinza & Preto)</option>
+                    <option value="neon">Rosa / Neon (Roxo & Rosa)</option>
+                </select>
+            </div>
+
+            <!-- Customize Pieces Color -->
+            <div class="flex flex-col gap-2">
+                <label class="text-xs font-bold text-slate-300 uppercase tracking-wider">Cores das Peças</label>
+                <select id="setting-piece-theme" onchange="applySettings()" class="bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-xl p-3 focus:outline-none focus:border-amber-500">
+                    <option value="trad">Vermelho vs Branco (Tradicional)</option>
+                    <option value="yellow-blue">Amarelo vs Azul</option>
+                    <option value="green-purple">Verde vs Roxo</option>
+                    <option value="gold-silver">Dourado vs Prateado</option>
+                </select>
+            </div>
+
+            <!-- Audio & Sound Effects -->
+            <div class="flex flex-col gap-3">
+                <label class="text-xs font-bold text-slate-300 uppercase tracking-wider">Efeitos Sonoros & Áudio</label>
+                <div class="flex items-center justify-between bg-slate-900 p-3 rounded-xl border border-slate-800">
+                    <span class="text-xs text-slate-300">Ativar Sons de Jogadas e Vitórias</span>
+                    <input id="setting-audio-toggle" type="checkbox" checked onchange="applySettings()" class="w-4 h-4 accent-amber-500 cursor-pointer">
+                </div>
+                <div class="flex flex-col gap-1">
+                    <span class="text-xs text-slate-400">Volume dos Sons</span>
+                    <input id="setting-audio-volume" type="range" min="0" max="1" step="0.1" value="0.8" onchange="applySettings()" class="accent-amber-500">
+                </div>
+            </div>
+
+            <!-- BANNER LINK PARA ÁREA APK -->
+            <div onclick="closeModal('modal-settings'); openModal('modal-apk');" class="glass-card p-4 rounded-2xl border border-amber-500/40 flex items-center justify-between cursor-pointer hover:bg-amber-500/10 transition-colors">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                        <i data-lucide="smartphone" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-sm text-slate-100 flex items-center gap-2">
+                            <span>APK / Baixar App</span>
+                            <span class="text-[9px] bg-amber-500 text-slate-950 font-extrabold px-1.5 py-0.5 rounded">OPCIONAL</span>
+                        </div>
+                        <p class="text-xs text-slate-400">Baixe o aplicativo para Android/PWA</p>
+                    </div>
+                </div>
+                <i data-lucide="external-link" class="w-5 h-5 text-amber-400"></i>
+            </div>
+
+            <button onclick="closeModal('modal-settings')" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl transition-colors text-xs">
+                Salvar Configurações
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. MODAL PERFIL DO JOGADOR -->
+    <div id="modal-profile" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-md rounded-3xl p-6 border border-slate-700 flex flex-col gap-5 animate-fade-in shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="user" class="w-5 h-5 text-amber-400"></i>
+                    <h3 class="font-bold text-lg text-slate-100">Perfil de Jogador</h3>
+                </div>
+                <button onclick="closeModal('modal-profile')" class="p-1 rounded-lg text-slate-400 hover:text-slate-100">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Profile Photo Upload / Avatar Selection -->
+            <div class="flex flex-col items-center gap-3">
+                <div class="relative group">
+                    <img id="profile-preview-avatar" src="https://placehold.co/100x100/1e293b/f59e0b?text=U" class="w-24 h-24 rounded-2xl object-cover border-2 border-amber-500 shadow-xl" alt="Preview">
+                    <label for="avatar-file-input" class="absolute inset-0 bg-slate-950/60 rounded-2xl flex flex-col items-center justify-center text-amber-400 opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                        <i data-lucide="camera" class="w-6 h-6"></i>
+                        <span class="text-[10px] font-bold mt-1">Trocar Foto</span>
+                    </label>
+                    <input type="file" id="avatar-file-input" accept="image/*" class="hidden" onchange="handleCustomPhotoUpload(event)">
+                </div>
+
+                <div class="text-center">
+                    <p class="text-xs text-slate-400">Escolha uma foto da galeria ou um avatar pré-definido:</p>
+                </div>
+
+                <!-- Predefined Avatars -->
+                <div class="flex gap-2 overflow-x-auto w-full justify-center py-1">
+                    <img src="https://placehold.co/100x100/1e293b/f59e0b?text=P1" onclick="selectPresetAvatar(this.src)" class="w-10 h-10 rounded-xl border border-slate-700 hover:border-amber-400 cursor-pointer object-cover">
+                    <img src="https://placehold.co/100x100/0f172a/3b82f6?text=P2" onclick="selectPresetAvatar(this.src)" class="w-10 h-10 rounded-xl border border-slate-700 hover:border-amber-400 cursor-pointer object-cover">
+                    <img src="https://placehold.co/100x100/064e3b/10b981?text=P3" onclick="selectPresetAvatar(this.src)" class="w-10 h-10 rounded-xl border border-slate-700 hover:border-amber-400 cursor-pointer object-cover">
+                    <img src="https://placehold.co/100x100/581c87/a855f7?text=P4" onclick="selectPresetAvatar(this.src)" class="w-10 h-10 rounded-xl border border-slate-700 hover:border-amber-400 cursor-pointer object-cover">
+                </div>
+            </div>
+
+            <!-- Username Input -->
+            <div class="flex flex-col gap-2">
+                <label class="text-xs font-bold text-slate-300 uppercase tracking-wider">Seu Nome de Usuário (Para Amigos te adicionarem)</label>
+                <input id="profile-username-input" type="text" placeholder="Seu nome no jogo..." class="bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-xl p-3 focus:outline-none focus:border-amber-500 font-semibold">
+            </div>
+
+            <button onclick="saveUserProfile()" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl transition-colors text-xs">
+                Salvar Alterações
+            </button>
+        </div>
+    </div>
+
+    <!-- 3. MODAL APK / BAIXAR APLICATIVO -->
+    <div id="modal-apk" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-md rounded-3xl p-6 border border-slate-700 flex flex-col gap-5 animate-fade-in shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="smartphone" class="w-5 h-5 text-amber-400"></i>
+                    <h3 class="font-bold text-lg text-slate-100">Área do Aplicativo (APK)</h3>
+                </div>
+                <button onclick="closeModal('modal-apk')" class="p-1 rounded-lg text-slate-400 hover:text-slate-100">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- App Info Card -->
+            <div class="flex items-center gap-4 bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
+                <div class="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+                    <i data-lucide="shield" class="w-9 h-9"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold text-base text-slate-100">Damas Pro APK v2.5</h4>
+                    <span class="text-xs text-emerald-400 font-medium">Oficial &amp; Seguro</span>
+                    <p class="text-[11px] text-slate-400 mt-1">Tamanho: ~4.2 MB &bull; Requer Android 6.0+</p>
+                </div>
+            </div>
+
+            <!-- APK Advantages -->
+            <div class="flex flex-col gap-2">
+                <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Vantagens do APK / Web App:</span>
+                <ul class="text-xs text-slate-400 space-y-2">
+                    <li class="flex items-center gap-2">
+                        <i data-lucide="check-circle-2" class="w-4 h-4 text-amber-400 shrink-0"></i>
+                        <span>Desempenho fluido a 60FPS otimizado para celulares</span>
+                    </li>
+                    <li class="flex items-center gap-2">
+                        <i data-lucide="check-circle-2" class="w-4 h-4 text-amber-400 shrink-0"></i>
+                        <span>Modo Offline 100% completo contra IA em qualquer lugar</span>
+                    </li>
+                    <li class="flex items-center gap-2">
+                        <i data-lucide="check-circle-2" class="w-4 h-4 text-amber-400 shrink-0"></i>
+                        <span>Ícone na tela inicial sem necessidade de navegação web</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col gap-2 pt-2">
+                <button onclick="downloadApkDirect()" class="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-xs">
+                    <i data-lucide="download" class="w-4 h-4"></i> Baixar APK Direto
+                </button>
+
+                <button onclick="installPWA()" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 transition-colors flex items-center justify-center gap-2 text-xs">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i> Instalar Web App (PWA)
+                </button>
+
+                <button onclick="shareAppUrl()" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 text-xs">
+                    <i data-lucide="share" class="w-4 h-4"></i> Compartilhar Link do Jogo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. MODAL SISTEMA DE AMIGOS POR NOME E PEDIDOS PENDENTES -->
+    <div id="modal-friends" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-md rounded-3xl p-6 border border-slate-700 flex flex-col gap-4 animate-fade-in shadow-2xl max-h-[85vh]">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="users" class="w-5 h-5 text-amber-400"></i>
+                    <h3 class="font-bold text-lg text-slate-100">Amigos & Convites</h3>
+                </div>
+                <button onclick="closeModal('modal-friends')" class="p-1 rounded-lg text-slate-400 hover:text-slate-100">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Form para adicionar Amigo por NOME -->
+            <form onsubmit="handleAddFriendByName(event)" class="flex gap-2">
+                <input id="friend-name-input" type="text" placeholder="Digite o NOME do amigo..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500 font-semibold">
+                <button type="submit" class="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs transition-colors shrink-0 flex items-center gap-1">
+                    <i data-lucide="user-plus" class="w-4 h-4"></i> Pedir Amizade
+                </button>
+            </form>
+
+            <!-- NAVEGAÇÃO POR ABAS: Amigos Adicionados vs Amigos Pendentes -->
+            <div class="flex border-b border-slate-800 text-xs font-bold mt-1">
+                <button id="tab-btn-friends" onclick="switchFriendsTab('accepted')" class="flex-1 py-2 text-center text-amber-400 border-b-2 border-amber-400 transition-all flex items-center justify-center gap-2">
+                    <i data-lucide="user-check" class="w-4 h-4"></i>
+                    <span>Amigos Aprovados</span>
+                    <span id="badge-friends-count" class="bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-full text-[10px]">0</span>
+                </button>
+                <button id="tab-btn-pending" onclick="switchFriendsTab('pending')" class="flex-1 py-2 text-center text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition-all flex items-center justify-center gap-2">
+                    <i data-lucide="clock" class="w-4 h-4"></i>
+                    <span>Pedidos Pendentes</span>
+                    <span id="badge-pending-count" class="hidden bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[10px]">0</span>
+                </button>
+            </div>
+
+            <!-- Lista de Amigos Aprovados -->
+            <div id="tab-content-friends" class="flex flex-col gap-2">
+                <div id="friends-accepted-list" class="overflow-y-auto max-h-60 flex flex-col gap-2 pr-1">
+                    <p class="text-xs text-slate-500 text-center py-6 italic">Nenhum amigo aprovado ainda. Digite o nome do amigo acima para pedir amizade!</p>
+                </div>
+            </div>
+
+            <!-- Lista de Pedidos Pendentes -->
+            <div id="tab-content-pending" class="hidden flex flex-col gap-2">
+                <div id="friends-pending-list" class="overflow-y-auto max-h-60 flex flex-col gap-2 pr-1">
+                    <p class="text-xs text-slate-500 text-center py-6 italic">Você não possui pedidos de amizade pendentes.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. MODAL JOIN MULTIPLAYER ROOM -->
+    <div id="modal-join-room" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-sm rounded-3xl p-6 border border-slate-700 flex flex-col gap-4 animate-fade-in shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                <h3 class="font-bold text-base text-slate-100">Entrar em Sala Online</h3>
+                <button onclick="closeModal('modal-join-room')" class="p-1 text-slate-400 hover:text-slate-100">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-400">Insira o código de 6 dígitos fornecido pelo seu amigo para jogar:</p>
+            <input id="input-room-code" type="text" maxlength="6" placeholder="Ex: A1B2C3" class="bg-slate-900 border border-slate-700 rounded-xl p-3 text-center text-lg font-mono font-bold tracking-widest text-amber-400 uppercase focus:outline-none focus:border-amber-500">
+            <button onclick="joinOnlineGame()" class="py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs transition-colors">
+                Confirmar e Entrar
+            </button>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container"></div>
+
+    <!-- FIREBASE MODULE INTEGRATION -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInAnonymously, 
+            signInWithCustomToken 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getDatabase, 
+            ref, 
+            set, 
+            update, 
+            onValue, 
+            push,
+            get
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBFVxOT3KuJoSC1mwsq6scTf_mFnfALEK8",
+            authDomain: "dama-41470.firebaseapp.com",
+            databaseURL: "https://dama-41470-default-rtdb.firebaseio.com",
+            projectId: "dama-41470",
+            storageBucket: "dama-41470.firebasestorage.app",
+            messagingSenderId: "469093417040",
+            appId: "1:469093417040:web:f2a6619073f42cb80c1155"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const rtdb = getDatabase(app);
+
+        window.rtdb = rtdb;
+
+        let currentUser = null;
+        
+        async function initAuth() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    const userCred = await signInWithCustomToken(auth, __initial_auth_token);
+                    currentUser = userCred.user;
+                } else {
+                    const userCred = await signInAnonymously(auth);
+                    currentUser = userCred.user;
+                }
+                AppState.userId = currentUser.uid;
+                localStorage.setItem('damas_user_id', currentUser.uid);
+
+                // Registra nome do usuário no Realtime Database para buscas por nome
+                registerUserInDatabase();
+
+                // Inicia escuta de solicitações de amizade, lista de amigos aprovados e convites em tempo real
+                listenForFriendRequestsAndGameInvites();
+            } catch (err) {
+                console.error("Erro na autenticação do Firebase:", err);
+            }
+        }
+
+        initAuth();
+
+        window.registerUserInDatabase = async function() {
+            if (!AppState.username || !rtdb || !AppState.userId) return;
+            const sanitizedUsername = AppState.username.trim().toLowerCase();
+            const userRef = ref(rtdb, 'users/' + sanitizedUsername);
+            try {
+                await set(userRef, {
+                    uid: AppState.userId,
+                    username: AppState.username,
+                    avatar: AppState.avatarUrl,
+                    lastSeen: Date.now()
+                });
+            } catch(e) { console.error("Erro ao registrar usuário:", e); }
+        };
+
+        // Escuta em tempo real se alguém chamou para jogar, mandou convite de amigo ou aprovou amizade
+        function listenForFriendRequestsAndGameInvites() {
+            if (!rtdb || !AppState.username) return;
+
+            const myNameKey = AppState.username.trim().toLowerCase();
+
+            // 1. Escutar solicitações de amizade pendentes em tempo real
+            const freqRef = ref(rtdb, 'friend_requests/' + myNameKey);
+            onValue(freqRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    const pendingList = [];
+                    Object.keys(data).forEach(key => {
+                        pendingList.push({ id: key, ...data[key] });
+                    });
+                    AppState.pendingFriendRequests = pendingList;
+                    renderPendingRequestsUI();
+                } else {
+                    AppState.pendingFriendRequests = [];
+                    renderPendingRequestsUI();
+                }
+            });
+
+            // 2. Escutar a Lista de Amigos Aprovados no Firebase (SINCRONIZAÇÃO BIDIRECIONAL EM TEMPO REAL)
+            const friendsRef = ref(rtdb, 'friends/' + myNameKey);
+            onValue(friendsRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    const acceptedList = [];
+                    Object.keys(data).forEach(key => {
+                        acceptedList.push({ id: key, ...data[key] });
+                    });
+                    
+                    // Sincroniza a lista de amigos global e salva localmente
+                    AppState.friends = acceptedList;
+                    localStorage.setItem('damas_friends', JSON.stringify(acceptedList));
+                    renderAcceptedFriendsUI();
+                } else {
+                    AppState.friends = [];
+                    localStorage.setItem('damas_friends', JSON.stringify([]));
+                    renderAcceptedFriendsUI();
+                }
+            });
+
+            // 3. Escutar Convites de Partida em Tempo Real
+            const inviteRef = ref(rtdb, 'game_invites/' + myNameKey);
+            onValue(inviteRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const invite = snapshot.val();
+                    if (invite && invite.status === 'pending' && invite.from !== AppState.username) {
+                        triggerMobilePushInvite(invite.from, invite.roomCode);
+                    }
+                }
+            });
+        }
+
+        // Função global para enviar pedido de amizade por nome
+        window.sendFriendRequestByName = async function(targetName) {
+            if (!rtdb) return false;
+            const targetKey = targetName.trim().toLowerCase();
+            
+            // Busca o usuário pelo nome
+            const userSnap = await get(ref(rtdb, 'users/' + targetKey));
+            if (!userSnap.exists()) {
+                showToast(`Usuário "${targetName}" não foi encontrado!`);
+                return false;
+            }
+
+            // Grava a solicitação
+            const reqRef = ref(rtdb, `friend_requests/${targetKey}/${AppState.userId}`);
+            await set(reqRef, {
+                fromName: AppState.username,
+                fromUid: AppState.userId,
+                fromAvatar: AppState.avatarUrl,
+                timestamp: Date.now()
+            });
+
+            showToast(`Pedido de amizade enviado para ${targetName}!`);
+            return true;
+        };
+
+        // Função para ACEITAR pedido de amizade (Grava em AMBOS os usuários no Firebase)
+        window.acceptFriendRequestInDB = async function(reqItem) {
+            if (!rtdb) return;
+
+            const myNameKey = AppState.username.trim().toLowerCase();
+            const friendNameKey = reqItem.fromName.trim().toLowerCase();
+
+            // Dados do Solicitante (para salvar na minha lista)
+            const friendDataForMe = {
+                id: reqItem.fromUid,
+                name: reqItem.fromName,
+                avatar: reqItem.fromAvatar || 'https://placehold.co/100x100/1e293b/38bdf8?text=A',
+                timestamp: Date.now()
+            };
+
+            // Meus dados (para salvar na lista do outro usuário que me pediu amizade)
+            const myDataForFriend = {
+                id: AppState.userId,
+                name: AppState.username,
+                avatar: AppState.avatarUrl,
+                timestamp: Date.now()
+            };
+
+            // 1. Salva na minha lista de amigos aprovados no Firebase
+            await set(ref(rtdb, `friends/${myNameKey}/${reqItem.fromUid}`), friendDataForMe);
+
+            // 2. Salva TAMBÉM na lista de amigos aprovados do amigo que pediu
+            await set(ref(rtdb, `friends/${friendNameKey}/${AppState.userId}`), myDataForFriend);
+
+            // 3. Remove o pedido pendente do banco
+            await set(ref(rtdb, `friend_requests/${myNameKey}/${reqItem.id}`), null);
+
+            showToast(`Você e ${reqItem.fromName} agora são amigos!`);
+        };
+
+        // Função para recusar pedido de amizade
+        window.rejectFriendRequestInDB = async function(reqItem) {
+            if (!rtdb) return;
+            const myNameKey = AppState.username.trim().toLowerCase();
+            await set(ref(rtdb, `friend_requests/${myNameKey}/${reqItem.id}`), null);
+            renderPendingRequestsUI();
+            showToast('Pedido de amizade recusado.');
+        };
+
+        // Enviar Convite direto de partida para um amigo em tempo real
+        window.sendDirectGameInviteToFriend = async function(friendName, roomCode) {
+            if (!rtdb) return;
+            const friendKey = friendName.trim().toLowerCase();
+            const inviteRef = ref(rtdb, 'game_invites/' + friendKey);
+            await set(inviteRef, {
+                from: AppState.username,
+                roomCode: roomCode,
+                status: 'pending',
+                timestamp: Date.now()
+            });
+            showToast(`Notificação enviada para ${friendName}! Aguarde na sala...`);
+        };
+
+        window.syncOnlineRoom = function(roomCode) {
+            if (!roomCode) return;
+            const roomRef = ref(rtdb, 'rooms/' + roomCode);
+
+            onValue(roomRef, (snapshot) => {
+                if (!snapshot.exists()) return;
+                const data = snapshot.val();
+
+                if (data.board) {
+                    AppState.game.board = typeof data.board === 'string' ? JSON.parse(data.board) : data.board;
+                } else if (data.boardState) {
+                    AppState.game.board = typeof data.boardState === 'string' ? JSON.parse(data.boardState) : data.boardState;
+                }
+
+                if (data.turn) {
+                    AppState.game.turn = data.turn;
+                }
+
+                if (data.capturedRed !== undefined) AppState.game.capturedRed = data.capturedRed;
+                if (data.capturedWhite !== undefined) AppState.game.capturedWhite = data.capturedWhite;
+
+                const guestName = data.guestName || data.guest || 'Oponente';
+                const hostName = data.hostName || data.host || 'Anfitrião';
+
+                if (AppState.game.playerColor === 'red' || AppState.game.playerColor === 'blue') {
+                    document.getElementById('p2-name').textContent = guestName;
+                } else {
+                    document.getElementById('p2-name').textContent = hostName;
+                }
+
+                renderBoard();
+            });
+
+            // Chat da sala
+            const chatRef = ref(rtdb, 'rooms/' + roomCode + '/messages');
+            onValue(chatRef, (snapshot) => {
+                const list = document.getElementById('match-chat-messages');
+                list.innerHTML = '';
+                if (snapshot.exists()) {
+                    const msgsObj = snapshot.val();
+                    const msgsArray = Object.values(msgsObj).sort((a,b) => a.timestamp - b.timestamp);
+                    msgsArray.forEach(msg => {
+                        const msgEl = document.createElement('div');
+                        const isMe = msg.senderId === AppState.userId;
+                        msgEl.className = `p-2 rounded-xl border text-slate-200 max-w-[80%] ${isMe ? 'bg-amber-500/20 border-amber-500/40 self-end' : 'bg-slate-800 border-slate-700 self-start'}`;
+                        msgEl.innerHTML = `<span class="font-bold text-amber-400 text-[10px] block">${isMe ? 'Você' : msg.senderName}:</span>${msg.text}`;
+                        list.appendChild(msgEl);
+                    });
+                    list.scrollTop = list.scrollHeight;
+                }
+            });
+        };
+
+        window.updateOnlineGameState = async function() {
+            if (AppState.game.mode !== 'online' || !AppState.game.roomId) return;
+            const roomRef = ref(rtdb, 'rooms/' + AppState.game.roomId);
+
+            try {
+                await update(roomRef, {
+                    board: JSON.stringify(AppState.game.board),
+                    turn: AppState.game.turn,
+                    capturedRed: AppState.game.capturedRed,
+                    capturedWhite: AppState.game.capturedWhite,
+                    updatedAt: Date.now()
+                });
+            } catch (err) {
+                console.error("Erro ao salvar movimento no Firebase Realtime Database:", err);
+            }
+        };
+
+        window.sendFirebaseChatMessage = async function(text) {
+            if (AppState.game.mode !== 'online' || !AppState.game.roomId) return;
+            const messagesRef = ref(rtdb, 'rooms/' + AppState.game.roomId + '/messages');
+            try {
+                await push(messagesRef, {
+                    text: text,
+                    senderId: AppState.userId,
+                    senderName: AppState.username,
+                    timestamp: Date.now()
+                });
+            } catch (err) {
+                console.error("Erro ao enviar mensagem para o Realtime Database:", err);
+            }
+        };
+    </script>
+
+    <!-- JAVASCRIPT ARCHITECTURE -->
+    <script>
+        /* ==========================================================================
+           STATE & CONFIGURATION MANAGEMENT
+           ========================================================================== */
+        
+        const AppState = {
+            userId: localStorage.getItem('damas_user_id') || 'USER_' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+            username: localStorage.getItem('damas_username') || 'Jogador_' + Math.floor(100 + Math.random() * 900),
+            avatarUrl: localStorage.getItem('damas_avatar') || 'https://placehold.co/100x100/1e293b/f59e0b?text=U',
+            
+            settings: JSON.parse(localStorage.getItem('damas_settings') || JSON.stringify({
+                boardTheme: 'classic',
+                pieceTheme: 'trad',
+                audioEnabled: true,
+                audioVolume: 0.8
+            })),
+
+            // Friends State
+            friends: JSON.parse(localStorage.getItem('damas_friends') || '[]'),
+            pendingFriendRequests: [],
+
+            // Active Game State
+            game: {
+                active: false,
+                mode: null,
+                aiLevel: 'medio',
+                board: Array(8).fill(null).map(() => Array(8).fill(null)),
+                turn: 'red',
+                selectedSquare: null,
+                validMoves: [],
+                capturedRed: 0,
+                capturedWhite: 0,
+                roomId: null,
+                playerColor: 'red'
+            }
+        };
+
+        const BOARD_THEMES = {
+            classic: { dark: '#b8860b', light: '#f5de2f' },
+            sapphire: { dark: '#1e3a8a', light: '#60a5fa' },
+            emerald: { dark: '#064e3b', light: '#34d399' },
+            cyber: { dark: '#18181b', light: '#52525b' },
+            neon: { dark: '#701a75', light: '#f472b6' }
+        };
+
+        const PIECE_THEMES = {
+            trad: { p1: '#ef4444', p1Border: '#991b1b', p2: '#f8fafc', p2Border: '#94a3b8' },
+            'yellow-blue': { p1: '#eab308', p1Border: '#854d0e', p2: '#3b82f6', p2Border: '#1e40af' },
+            'green-purple': { p1: '#10b981', p1Border: '#065f46', p2: '#a855f7', p2Border: '#6b21a8' },
+            'gold-silver': { p1: '#f59e0b', p1Border: '#78350f', p2: '#cbd5e1', p2Border: '#475569' }
+        };
+
+        localStorage.setItem('damas_user_id', AppState.userId);
+
+        /* ==========================================================================
+           AUDIO SYSTEM
+           ========================================================================== */
+        const AudioSys = {
+            ctx: null,
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            },
+            play(type) {
+                if (!AppState.settings.audioEnabled) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                gain.gain.value = AppState.settings.audioVolume;
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                if (type === 'move') {
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.exponentialRampToValueAtTime(150, now + 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+                } else if (type === 'capture') {
+                    osc.frequency.setValueAtTime(600, now);
+                    osc.frequency.exponentialRampToValueAtTime(200, now + 0.15);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } else if (type === 'win') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.setValueAtTime(600, now + 0.12);
+                    osc.frequency.setValueAtTime(800, now + 0.24);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                }
+            }
+        };
+
+        /* ==========================================================================
+           INITIALIZATION & SPLASH SCREEN
+           ========================================================================== */
+        window.onload = function() {
+            lucide.createIcons();
+            runSplashScreen();
+            loadProfileUI();
+            applySettingsUIValues();
+            applySettings();
+            renderAcceptedFriendsUI();
+        };
+
+        function runSplashScreen() {
+            const bar = document.getElementById('splash-bar');
+            const status = document.getElementById('splash-status');
+            const splash = document.getElementById('splash-screen');
+            const app = document.getElementById('app-container');
+
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 20;
+                bar.style.width = progress + '%';
+                if (progress === 40) status.textContent = 'Verificando conexão...';
+                if (progress === 80) status.textContent = 'Sincronizando amigos...';
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        splash.classList.add('opacity-0');
+                        setTimeout(() => {
+                            splash.classList.add('hidden');
+                            app.classList.remove('hidden');
+                        }, 500);
+                    }, 300);
+                }
+            }, 180);
+        }
+
+        /* ==========================================================================
+           PROFILE & USER MANAGEMENT
+           ========================================================================== */
+        function loadProfileUI() {
+            document.getElementById('header-username').textContent = AppState.username;
+            document.getElementById('header-avatar').src = AppState.avatarUrl;
+            document.getElementById('profile-username-input').value = AppState.username;
+            document.getElementById('profile-preview-avatar').src = AppState.avatarUrl;
+        }
+
+        function saveUserProfile() {
+            const newName = document.getElementById('profile-username-input').value.trim();
+            if (newName) {
+                AppState.username = newName;
+                localStorage.setItem('damas_username', newName);
+                if (window.registerUserInDatabase) window.registerUserInDatabase();
+            }
+            localStorage.setItem('damas_avatar', AppState.avatarUrl);
+            loadProfileUI();
+            closeModal('modal-profile');
+            showToast('Perfil atualizado com sucesso!');
+        }
+
+        function handleCustomPhotoUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64Image = e.target.result;
+                AppState.avatarUrl = base64Image;
+                document.getElementById('profile-preview-avatar').src = base64Image;
+                showToast('Foto personalizada carregada!');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function selectPresetAvatar(url) {
+            AppState.avatarUrl = url;
+            document.getElementById('profile-preview-avatar').src = url;
+        }
+
+        /* ==========================================================================
+           SETTINGS SYSTEM
+           ========================================================================== */
+        function applySettingsUIValues() {
+            document.getElementById('setting-board-theme').value = AppState.settings.boardTheme;
+            document.getElementById('setting-piece-theme').value = AppState.settings.pieceTheme;
+            document.getElementById('setting-audio-toggle').checked = AppState.settings.audioEnabled;
+            document.getElementById('setting-audio-volume').value = AppState.settings.audioVolume;
+        }
+
+        function applySettings() {
+            AppState.settings.boardTheme = document.getElementById('setting-board-theme').value;
+            AppState.settings.pieceTheme = document.getElementById('setting-piece-theme').value;
+            AppState.settings.audioEnabled = document.getElementById('setting-audio-toggle').checked;
+            AppState.settings.audioVolume = parseFloat(document.getElementById('setting-audio-volume').value);
+
+            localStorage.setItem('damas_settings', JSON.stringify(AppState.settings));
+
+            const bTheme = BOARD_THEMES[AppState.settings.boardTheme];
+            document.documentElement.style.setProperty('--board-dark', bTheme.dark);
+            document.documentElement.style.setProperty('--board-light', bTheme.light);
+
+            const pTheme = PIECE_THEMES[AppState.settings.pieceTheme];
+            document.documentElement.style.setProperty('--p1-color', pTheme.p1);
+            document.documentElement.style.setProperty('--p1-border', pTheme.p1Border);
+            document.documentElement.style.setProperty('--p2-color', pTheme.p2);
+            document.documentElement.style.setProperty('--p2-border', pTheme.p2Border);
+
+            if (AppState.game.active) renderBoard();
+        }
+
+        /* ==========================================================================
+           APK & PWA DOWNLOAD SYSTEM
+           ========================================================================== */
+        function downloadApkDirect() {
+            showToast('Iniciando download do arquivo APK...');
+            const element = document.createElement('a');
+            const file = new Blob(["Simulated Damas Pro APK Binary Content"], {type: 'application/vnd.android.package-archive'});
+            element.href = URL.createObjectURL(file);
+            element.download = "DamasPro_v2.5.apk";
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+        }
+
+        function installPWA() {
+            showToast('Clique em "Adicionar à Tela Inicial" no menu do seu navegador!');
+        }
+
+        function shareAppUrl() {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Damas Pro Online',
+                    text: 'Jogue Damas Pro Online comigo!',
+                    url: window.location.href
+                });
+            } else {
+                navigator.clipboard.writeText(window.location.href);
+                showToast('Link do jogo copiado para a área de transferência!');
+            }
+        }
+
+        /* ==========================================================================
+           SISTEMA DE AMIGOS POR NOME, ABAS & NOTIFICAÇÕES PUSH
+           ========================================================================== */
+        
+        // Alternar abas no Modal de Amigos
+        function switchFriendsTab(tab) {
+            const btnFriends = document.getElementById('tab-btn-friends');
+            const btnPending = document.getElementById('tab-btn-pending');
+            const contentFriends = document.getElementById('tab-content-friends');
+            const contentPending = document.getElementById('tab-content-pending');
+
+            if (tab === 'accepted') {
+                btnFriends.className = 'flex-1 py-2 text-center text-amber-400 border-b-2 border-amber-400 transition-all flex items-center justify-center gap-2 font-bold';
+                btnPending.className = 'flex-1 py-2 text-center text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition-all flex items-center justify-center gap-2 font-bold';
+                contentFriends.classList.remove('hidden');
+                contentPending.classList.add('hidden');
+            } else {
+                btnPending.className = 'flex-1 py-2 text-center text-amber-400 border-b-2 border-amber-400 transition-all flex items-center justify-center gap-2 font-bold';
+                btnFriends.className = 'flex-1 py-2 text-center text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition-all flex items-center justify-center gap-2 font-bold';
+                contentPending.classList.remove('hidden');
+                contentFriends.classList.add('hidden');
+            }
+        }
+
+        // Adicionar Amigo pesquisando pelo NOME
+        async function handleAddFriendByName(event) {
+            event.preventDefault();
+            const input = document.getElementById('friend-name-input');
+            const targetName = input.value.trim();
+
+            if (!targetName) return;
+            if (targetName.toLowerCase() === AppState.username.toLowerCase()) {
+                showToast('Você não pode adicionar seu próprio nome!');
+                return;
+            }
+
+            if (AppState.friends.some(f => f.name.toLowerCase() === targetName.toLowerCase())) {
+                showToast('Esse usuário já está na sua lista de amigos!');
+                return;
+            }
+
+            if (window.sendFriendRequestByName) {
+                const ok = await window.sendFriendRequestByName(targetName);
+                if (ok) input.value = '';
+            }
+        }
+
+        // Renderiza Lista de Amigos Aprovados
+        function renderAcceptedFriendsUI() {
+            const listEl = document.getElementById('friends-accepted-list');
+            const badgeCount = document.getElementById('badge-friends-count');
+            
+            badgeCount.textContent = AppState.friends.length;
+
+            if (AppState.friends.length === 0) {
+                listEl.innerHTML = `<p class="text-xs text-slate-500 text-center py-6 italic">Nenhum amigo aprovado ainda. Digite o nome do amigo acima para pedir amizade!</p>`;
+                return;
+            }
+
+            listEl.innerHTML = AppState.friends.map(f => `
+                <div class="glass-card p-3 rounded-2xl border border-slate-800 flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="relative">
+                            <img src="${f.avatar || 'https://placehold.co/100x100/1e293b/f59e0b?text=A'}" class="w-9 h-9 rounded-xl object-cover border border-slate-700" alt="Friend">
+                            <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-900 absolute -bottom-0.5 -right-0.5"></span>
+                        </div>
+                        <div>
+                            <div class="font-bold text-xs text-slate-200">${f.name}</div>
+                            <div class="text-[10px] text-emerald-400 font-medium">Online</div>
+                        </div>
+                    </div>
+                    <button onclick="callFriendToPlayGame('${f.name}')" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1">
+                        <i data-lucide="swords" class="w-3.5 h-3.5"></i> Chamar P/ Jogar
+                    </button>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        // Renderiza Pedidos de Amizade Pendentes
+        function renderPendingRequestsUI() {
+            const listEl = document.getElementById('friends-pending-list');
+            const badgePending = document.getElementById('badge-pending-count');
+            const friendsBadgeHeader = document.getElementById('friends-badge');
+
+            const count = AppState.pendingFriendRequests.length;
+
+            if (count > 0) {
+                badgePending.textContent = count;
+                badgePending.classList.remove('hidden');
+                friendsBadgeHeader.classList.remove('hidden');
+            } else {
+                badgePending.classList.add('hidden');
+                friendsBadgeHeader.classList.add('hidden');
+            }
+
+            if (count === 0) {
+                listEl.innerHTML = `<p class="text-xs text-slate-500 text-center py-6 italic">Você não possui pedidos de amizade pendentes.</p>`;
+                return;
+            }
+
+            listEl.innerHTML = AppState.pendingFriendRequests.map(req => `
+                <div class="glass-card p-3 rounded-2xl border border-slate-800 flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <img src="${req.fromAvatar || 'https://placehold.co/100x100/1e293b/38bdf8?text=A'}" class="w-9 h-9 rounded-xl object-cover border border-slate-700" alt="Avatar">
+                        <div>
+                            <div class="font-bold text-xs text-slate-200">${req.fromName}</div>
+                            <div class="text-[10px] text-amber-400">Quer ser seu amigo</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-1">
+                        <button onclick='acceptFriendRequest(${JSON.stringify(req)})' class="p-1.5 bg-emerald-500 text-slate-950 hover:bg-emerald-400 rounded-lg text-xs font-bold" title="Aceitar">
+                            <i data-lucide="check" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick='rejectFriendRequest(${JSON.stringify(req)})' class="p-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg text-xs font-bold" title="Recusar">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function acceptFriendRequest(reqItem) {
+            if (window.acceptFriendRequestInDB) {
+                window.acceptFriendRequestInDB(reqItem);
+            }
+        }
+
+        function rejectFriendRequest(reqItem) {
+            if (window.rejectFriendRequestInDB) {
+                window.rejectFriendRequestInDB(reqItem);
+            }
+        }
+
+        // Clica em "Chamar P/ Jogar" no amigo
+        async function callFriendToPlayGame(friendName) {
+            closeModal('modal-friends');
+            // Cria a sala de jogo
+            const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            AppState.game.mode = 'online';
+            AppState.game.roomId = roomCode;
+            AppState.game.playerColor = 'red'; 
+            AppState.game.active = true;
+            AppState.game.board = initBoard();
+            AppState.game.turn = 'red';
+
+            document.getElementById('room-code-display').textContent = roomCode;
+            document.getElementById('room-banner').classList.remove('hidden');
+            document.getElementById('p2-name').textContent = friendName;
+
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-gameplay').classList.remove('hidden');
+            renderBoard();
+
+            // Grava sala no banco
+            if (window.rtdb) {
+                const { ref, set } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+                const roomRef = ref(window.rtdb, 'rooms/' + roomCode);
+                await set(roomRef, {
+                    board: JSON.stringify(AppState.game.board),
+                    turn: 'red',
+                    host: AppState.username,
+                    hostName: AppState.username,
+                    status: 'waiting',
+                    capturedRed: 0,
+                    capturedWhite: 0,
+                    createdAt: Date.now()
+                });
+                window.syncOnlineRoom(roomCode);
+            }
+
+            // Envia o convite/notificação para o celular do amigo!
+            if (window.sendDirectGameInviteToFriend) {
+                window.sendDirectGameInviteToFriend(friendName, roomCode);
+            }
+        }
+
+        // Função disparada no celular do amigo para avisar que foi convidado!
+        function triggerMobilePushInvite(inviterName, roomCode) {
+            AudioSys.play('win'); // Efeito sonoro de alerta
+            const banner = document.getElementById('push-notification');
+            const title = document.getElementById('push-title');
+            const body = document.getElementById('push-body');
+            const actionBtn = document.getElementById('push-action-btn');
+
+            title.textContent = `Convite de Partida!`;
+            body.textContent = `Seu amigo ${inviterName} convidou você para jogar uma partida de Damas agora!`;
+            
+            // Se clicar no botão ou na mensagem, entra DIRETO no jogo sem digitar nada
+            actionBtn.onclick = () => acceptDirectPushInvite(roomCode, inviterName);
+            banner.onclick = (e) => {
+                if (e.target.id !== 'push-action-btn' && !e.target.closest('button')) {
+                    acceptDirectPushInvite(roomCode, inviterName);
+                }
+            };
+
+            banner.classList.remove('hidden');
+        }
+
+        function dismissPushNotification(event) {
+            event.stopPropagation();
+            document.getElementById('push-notification').classList.add('hidden');
+        }
+
+        // Entrar Direto na partida após tocar na Notificação
+        async function acceptDirectPushInvite(roomCode, inviterName) {
+            document.getElementById('push-notification').classList.add('hidden');
+
+            AppState.game.mode = 'online';
+            AppState.game.roomId = roomCode;
+            AppState.game.playerColor = 'white';
+            AppState.game.active = true;
+            AppState.game.board = initBoard();
+            AppState.game.turn = 'red';
+
+            document.getElementById('p2-name').textContent = inviterName;
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-gameplay').classList.remove('hidden');
+            renderBoard();
+
+            if (window.rtdb) {
+                const { ref, update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+                const roomRef = ref(window.rtdb, 'rooms/' + roomCode);
+                await update(roomRef, {
+                    guest: AppState.username,
+                    guestName: AppState.username,
+                    status: 'playing'
+                }).catch(err => console.error(err));
+
+                window.syncOnlineRoom(roomCode);
+            }
+
+            showToast(`Entrando na partida de ${inviterName}... Boa sorte!`);
+        }
+
+        /* ==========================================================================
+           CHECKERS ENGINE LOGIC
+           ========================================================================== */
+        function initBoard() {
+            const b = Array(8).fill(null).map(() => Array(8).fill(null));
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    if ((r + c) % 2 === 1) {
+                        if (r < 3) b[r][c] = { color: 'white', isKing: false };
+                        else if (r > 4) b[r][c] = { color: 'red', isKing: false };
+                    }
+                }
+            }
+            return b;
+        }
+
+        function renderBoard() {
+            const boardEl = document.getElementById('board');
+            boardEl.innerHTML = '';
+
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const sq = document.createElement('div');
+                    sq.className = `square ${(r + c) % 2 === 1 ? 'dark' : 'light'}`;
+                    sq.dataset.row = r;
+                    sq.dataset.col = c;
+
+                    if (AppState.game.selectedSquare && AppState.game.selectedSquare.r === r && AppState.game.selectedSquare.c === c) {
+                        sq.classList.add('selected');
+                    }
+                    if (AppState.game.validMoves.some(m => m.r === r && m.c === c)) {
+                        sq.classList.add('valid-move');
+                    }
+
+                    const piece = AppState.game.board[r][c];
+                    if (piece) {
+                        const pEl = document.createElement('div');
+                        pEl.className = `piece ${piece.color === 'red' ? 'p1' : 'p2'} ${piece.isKing ? 'king' : ''}`;
+                        sq.appendChild(pEl);
+                    }
+
+                    sq.onclick = () => handleSquareClick(r, c);
+                    boardEl.appendChild(sq);
+                }
+            }
+
+            document.getElementById('p1-captured-count').textContent = `${AppState.game.capturedRed} capturas`;
+            document.getElementById('p2-captured-count').textContent = `${AppState.game.capturedWhite} capturas`;
+
+            const p1Turn = document.getElementById('p1-turn-indicator');
+            const p2Turn = document.getElementById('p2-turn-indicator');
+
+            if (AppState.game.turn === 'red') {
+                p1Turn.classList.remove('hidden');
+                p2Turn.classList.add('hidden');
+            } else {
+                p1Turn.classList.add('hidden');
+                p2Turn.classList.remove('hidden');
+            }
+        }
+
+        function handleSquareClick(r, c) {
+            const piece = AppState.game.board[r][c];
+            const currentTurn = AppState.game.turn;
+
+            if (AppState.game.mode === 'online' && currentTurn !== AppState.game.playerColor) {
+                return;
+            }
+
+            if (AppState.game.selectedSquare) {
+                const move = AppState.game.validMoves.find(m => m.r === r && m.c === c);
+                if (move) {
+                    executeMove(AppState.game.selectedSquare, move);
+                    return;
+                }
+            }
+
+            if (piece && piece.color === currentTurn) {
+                AppState.game.selectedSquare = { r, c };
+                AppState.game.validMoves = calculateValidMoves(r, c);
+                renderBoard();
+                return;
+            }
+
+            AppState.game.selectedSquare = null;
+            AppState.game.validMoves = [];
+            renderBoard();
+        }
+
+        function calculateValidMoves(r, c) {
+            const piece = AppState.game.board[r][c];
+            if (!piece) return [];
+
+            const moves = [];
+            const dirs = piece.isKing 
+                ? [[-1, -1], [-1, 1], [1, -1], [1, 1]]
+                : piece.color === 'red' ? [[-1, -1], [-1, 1]] : [[1, -1], [1, 1]];
+
+            dirs.forEach(([dr, dc]) => {
+                const nr = r + dr;
+                const nc = c + dc;
+
+                if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8 && !AppState.game.board[nr][nc]) {
+                    moves.push({ r: nr, c: nc, capture: null });
+                }
+
+                const capR = r + dr;
+                const capC = c + dc;
+                const jumpR = r + dr * 2;
+                const jumpC = c + dc * 2;
+
+                if (jumpR >= 0 && jumpR < 8 && jumpC >= 0 && jumpC < 8) {
+                    const capPiece = AppState.game.board[capR][capC];
+                    if (capPiece && capPiece.color !== piece.color && !AppState.game.board[jumpR][jumpC]) {
+                        moves.push({ r: jumpR, c: jumpC, capture: { r: capR, c: capC } });
+                    }
+                }
+            });
+
+            return moves;
+        }
+
+        function executeMove(from, to) {
+            const piece = AppState.game.board[from.r][from.c];
+            AppState.game.board[from.r][from.c] = null;
+            AppState.game.board[to.r][to.c] = piece;
+
+            if (to.capture) {
+                AppState.game.board[to.capture.r][to.capture.c] = null;
+                if (piece.color === 'red') AppState.game.capturedRed++;
+                else AppState.game.capturedWhite++;
+                AudioSys.play('capture');
+            } else {
+                AudioSys.play('move');
+            }
+
+            if ((piece.color === 'red' && to.r === 0) || (piece.color === 'white' && to.r === 7)) {
+                piece.isKing = true;
+            }
+
+            AppState.game.selectedSquare = null;
+            AppState.game.validMoves = [];
+
+            AppState.game.turn = AppState.game.turn === 'red' ? 'white' : 'red';
+            renderBoard();
+
+            if (AppState.game.mode === 'online' && window.updateOnlineGameState) {
+                window.updateOnlineGameState();
+            }
+
+            checkWinCondition();
+
+            if (AppState.game.active && AppState.game.mode === 'ai' && AppState.game.turn === 'white') {
+                setTimeout(triggerAiMove, 500);
+            }
+        }
+
+        function triggerAiMove() {
+            let allMoves = [];
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const p = AppState.game.board[r][c];
+                    if (p && p.color === 'white') {
+                        const valid = calculateValidMoves(r, c);
+                        valid.forEach(m => allMoves.push({ from: { r, c }, to: m }));
+                    }
+                }
+            }
+
+            if (allMoves.length === 0) {
+                endGame('Você Venceu! A IA não possui mais movimentos.');
+                return;
+            }
+
+            const captures = allMoves.filter(m => m.to.capture);
+            const chosen = captures.length > 0 
+                ? captures[Math.floor(Math.random() * captures.length)]
+                : allMoves[Math.floor(Math.random() * allMoves.length)];
+
+            executeMove(chosen.from, chosen.to);
+        }
+
+        function checkWinCondition() {
+            let redCount = 0, whiteCount = 0;
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const p = AppState.game.board[r][c];
+                    if (p) {
+                        if (p.color === 'red') redCount++;
+                        else whiteCount++;
+                    }
+                }
+            }
+
+            if (redCount === 0) endGame('Oponente Venceu!');
+            else if (whiteCount === 0) endGame('Você Venceu a Partida!');
+        }
+
+        function endGame(msg) {
+            AppState.game.active = false;
+            AudioSys.play('win');
+            showToast(msg);
+        }
+
+        /* ==========================================================================
+           GAME MODE CONTROLLERS
+           ========================================================================== */
+        function startAiGame(level) {
+            AppState.game.mode = 'ai';
+            AppState.game.aiLevel = level;
+            AppState.game.active = true;
+            AppState.game.board = initBoard();
+            AppState.game.turn = 'red';
+            AppState.game.capturedRed = 0;
+            AppState.game.capturedWhite = 0;
+            
+            document.getElementById('p2-name').textContent = 'IA (' + level.toUpperCase() + ')';
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-gameplay').classList.remove('hidden');
+            renderBoard();
+            showToast('Jogo contra IA iniciado!');
+        }
+
+        function startLocalGame() {
+            AppState.game.mode = 'local';
+            AppState.game.active = true;
+            AppState.game.board = initBoard();
+            AppState.game.turn = 'red';
+            AppState.game.capturedRed = 0;
+            AppState.game.capturedWhite = 0;
+
+            document.getElementById('p2-name').textContent = 'Jogador 2 (Local)';
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-gameplay').classList.remove('hidden');
+            renderBoard();
+            showToast('Partida Local para 2 jogadores iniciada!');
+        }
+
+        async function createOnlineGame() {
+            const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            AppState.game.mode = 'online';
+            AppState.game.roomId = roomCode;
+            AppState.game.playerColor = 'red'; 
+            AppState.game.active = true;
+            AppState.game.board = initBoard();
+            AppState.game.turn = 'red';
+
+            document.getElementById('room-code-display').textContent = roomCode;
+            document.getElementById('room-banner').classList.remove('hidden');
+
+            document.getElementById('p2-name').textContent = 'Aguardando Amigo...';
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-gameplay').classList.remove('hidden');
+            renderBoard();
+
+            if (window.rtdb) {
+                const { ref, set } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+                const roomRef = ref(window.rtdb, 'rooms/' + roomCode);
+                await set(roomRef, {
+                    board: JSON.stringify(AppState.game.board),
+                    turn: 'red',
+                    host: AppState.username,
+                    hostName: AppState.username,
+                    status: 'waiting',
+                    capturedRed: 0,
+                    capturedWhite: 0,
+                    createdAt: Date.now()
+                });
+                window.syncOnlineRoom(roomCode);
+            }
+
+            showToast('Sala Criada no Realtime Database!');
+        }
+
+        async function joinOnlineGame() {
+            const code = document.getElementById('input-room-code').value.trim().toUpperCase();
+            if (code.length < 6) {
+                showToast('Digite um código válido de 6 caracteres!');
+                return;
+            }
+
+            AppState.game.mode = 'online';
+            AppState.game.roomId = code;
+            AppState.game.playerColor = 'white';
+            AppState.game.active = true;
+            AppState.game.board = initBoard();
+            AppState.game.turn = 'red';
+
+            closeModal('modal-join-room');
+            document.getElementById('p2-name').textContent = 'Oponente Online';
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-gameplay').classList.remove('hidden');
+            renderBoard();
+
+            if (window.rtdb) {
+                const { ref, update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+                const roomRef = ref(window.rtdb, 'rooms/' + code);
+                await update(roomRef, {
+                    guest: AppState.username,
+                    guestName: AppState.username,
+                    status: 'playing'
+                }).catch(err => console.error(err));
+
+                window.syncOnlineRoom(code);
+            }
+
+            showToast('Conectado à sala com sucesso!');
+        }
+
+        function leaveGame() {
+            AppState.game.active = false;
+            document.getElementById('view-gameplay').classList.add('hidden');
+            document.getElementById('view-dashboard').classList.remove('hidden');
+            document.getElementById('room-banner').classList.add('hidden');
+        }
+
+        /* ==========================================================================
+           MATCH CHAT SYSTEM
+           ========================================================================== */
+        function toggleMatchChat() {
+            const panel = document.getElementById('match-chat-panel');
+            panel.classList.toggle('hidden');
+            document.getElementById('chat-unread-dot').classList.add('hidden');
+        }
+
+        function handleSendMatchMessage(e) {
+            e.preventDefault();
+            const input = document.getElementById('match-chat-input');
+            const text = input.value.trim();
+            if (text) {
+                sendQuickPhrase(text);
+                input.value = '';
+            }
+        }
+
+        function sendQuickPhrase(msg) {
+            if (AppState.game.mode === 'online' && window.sendFirebaseChatMessage) {
+                window.sendFirebaseChatMessage(msg);
+            } else {
+                const list = document.getElementById('match-chat-messages');
+                const msgEl = document.createElement('div');
+                msgEl.className = 'bg-slate-800 p-2 rounded-xl border border-slate-700 text-slate-200 self-end max-w-[80%]';
+                msgEl.innerHTML = `<span class="font-bold text-amber-400 text-[10px] block">Você:</span>${msg}`;
+                list.appendChild(msgEl);
+                list.scrollTop = list.scrollHeight;
+                AudioSys.play('move');
+            }
+        }
+
+        /* ==========================================================================
+           MODAL UTILITIES & TOASTS
+           ========================================================================== */
+        function openModal(modalId) {
+            document.getElementById(modalId)?.classList.remove('hidden');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId)?.classList.add('hidden');
+        }
+
+        function openJoinModal() {
+            openModal('modal-join-room');
+        }
+
+        function closeRoomBanner() {
+            document.getElementById('room-banner')?.classList.add('hidden');
+        }
+
+        function copyRoomCode() {
+            if (AppState.game.roomId) {
+                navigator.clipboard.writeText(AppState.game.roomId);
+                showToast('Código da sala copiado!');
+            }
+        }
+
+        function showToast(text) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = `<i data-lucide="info" class="w-4 h-4 text-amber-400"></i> ${text}`;
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
